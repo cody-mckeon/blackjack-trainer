@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { DEFAULT_TRUE_COUNT_SETTINGS, RECENT_SESSION_LIMIT } from '../constants';
+import { getTheoreticalRunningCountBound } from '../domain/runningCountBounds';
 import {
   SHOE_SIZES,
   type DeckPerformanceStats,
@@ -42,10 +43,15 @@ function parseSettings(value: string | null): TrueCountSettings {
       return DEFAULT_TRUE_COUNT_SETTINGS;
     }
 
+    const theoreticalBound = getTheoreticalRunningCountBound(candidate.shoeSize === 'mixed' ? 8 : candidate.shoeSize);
+    const clampedMinimum = Math.min(theoreticalBound, Math.max(-theoreticalBound, runningCountMin));
+    const clampedMaximum = Math.min(theoreticalBound, Math.max(-theoreticalBound, runningCountMax));
+
     return {
       shoeSize: candidate.shoeSize,
-      runningCountMin,
-      runningCountMax,
+      runningCountRangeMode: candidate.runningCountRangeMode === 'custom' ? 'custom' : 'realistic',
+      runningCountMin: clampedMinimum,
+      runningCountMax: clampedMaximum,
       deckPrecision: candidate.deckPrecision === 0.25 || candidate.deckPrecision === 1 ? candidate.deckPrecision : 0.5,
       sessionLength:
         candidate.sessionLength === 10 ||

@@ -19,7 +19,8 @@ export default function TrueCountSummaryScreen() {
   }
 
   const trainAgain = () => {
-    const sessionSettings = lastSummary.mode === 'pattern-recall' ? { ...settings, shoeSize: 'mixed' as const } : settings;
+    const sessionSettings =
+      lastSummary.mode === 'pattern-recall' ? { ...settings, shoeSize: lastSummary.shoeSize } : settings;
     startSession(sessionSettings, {
       mode: lastSummary.mode,
       patternDecksRemaining: lastSummary.patternDecksRemaining,

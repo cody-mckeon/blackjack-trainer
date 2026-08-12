@@ -5,14 +5,16 @@ export const SHOE_SIZES = [1, 2, 4, 6, 8] as const;
 export type ShoeSize = (typeof SHOE_SIZES)[number];
 export type ShoeSizeSelection = ShoeSize | 'mixed';
 export type DeckPrecision = 1 | 0.5 | 0.25;
+export type RunningCountRangeMode = 'realistic' | 'custom';
 export type TrueCountPracticeMode = 'standard' | 'adaptive' | 'pattern-recall';
 export type ResponseSpeed = 'automatic' | 'fast' | 'calculating' | 'needs-practice';
 
 export const PATTERN_DECK_VALUES = [6, 5.5, 5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1] as const;
-export type PatternDecksRemaining = (typeof PATTERN_DECK_VALUES)[number];
+export type PatternDecksRemaining = number;
 
 export interface TrueCountSettings {
   shoeSize: ShoeSizeSelection;
+  runningCountRangeMode: RunningCountRangeMode;
   runningCountMin: number;
   runningCountMax: number;
   deckPrecision: DeckPrecision;

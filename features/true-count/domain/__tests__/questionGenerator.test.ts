@@ -8,12 +8,17 @@ describe('getValidDecksRemaining', () => {
     expect(getValidDecksRemaining(6, 0.5)).toEqual([6, 5.5, 5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1]);
   });
 
+  it('includes a playable half-deck point for a 1-deck shoe', () => {
+    expect(getValidDecksRemaining(1, 0.5)).toEqual([1, 0.5]);
+  });
+
   it.each(SHOE_SIZES)('never exceeds the %s-deck shoe boundary', (shoeSize) => {
     const values = getValidDecksRemaining(shoeSize, 0.5);
 
     expect(Math.max(...values)).toBe(shoeSize);
-    expect(Math.min(...values)).toBe(1);
-    expect(values.every((value) => value <= shoeSize && value >= 1)).toBe(true);
+    const minimum = shoeSize === 1 ? 0.5 : 1;
+    expect(Math.min(...values)).toBe(minimum);
+    expect(values.every((value) => value <= shoeSize && value >= minimum)).toBe(true);
   });
 
   it('supports quarter-deck precision without changing the API', () => {
@@ -22,20 +27,32 @@ describe('getValidDecksRemaining', () => {
 });
 
 describe('generateTrueCountQuestion', () => {
-  it('honors a specific shoe size and running count boundaries', () => {
+  it('generates a meaningful realistic scenario in a 1-deck shoe', () => {
+    const question = generateTrueCountQuestion(
+      { ...DEFAULT_TRUE_COUNT_SETTINGS, shoeSize: 1 },
+      () => 0.9999,
+    );
+
+    expect(question.decksRemaining).toBe(0.5);
+    expect(question.runningCount).toBe(10);
+  });
+
+  it('honors a custom running count range inside realistic bounds', () => {
     const question = generateTrueCountQuestion(
       {
         ...DEFAULT_TRUE_COUNT_SETTINGS,
         shoeSize: 4,
+        runningCountRangeMode: 'custom',
         runningCountMin: -3,
         runningCountMax: -3,
       },
       () => 0,
       () => 123,
+      { fixedDecksRemaining: 2 },
     );
 
     expect(question.shoeSize).toBe(4);
-    expect(question.decksRemaining).toBe(4);
+    expect(question.decksRemaining).toBe(2);
     expect(question.runningCount).toBe(-3);
     expect(question.answerChoices).toContain(question.correctAnswer);
   });
@@ -57,5 +74,18 @@ describe('generateTrueCountQuestion', () => {
 
     expect(question.decksRemaining).toBe(3.5);
     expect(question.shoeSize).toBeGreaterThanOrEqual(3.5);
+  });
+
+  it('never generates an impossible custom running count', () => {
+    const settings = {
+      ...DEFAULT_TRUE_COUNT_SETTINGS,
+      shoeSize: 6 as const,
+      runningCountRangeMode: 'custom' as const,
+      runningCountMin: -120,
+      runningCountMax: 120,
+    };
+
+    expect(generateTrueCountQuestion(settings, () => 0, Date.now, { fixedDecksRemaining: 5.5 }).runningCount).toBe(-10);
+    expect(generateTrueCountQuestion(settings, () => 0.9999, Date.now, { fixedDecksRemaining: 5.5 }).runningCount).toBe(10);
   });
 });

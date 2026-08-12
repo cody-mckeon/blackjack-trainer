@@ -1,5 +1,6 @@
 import { getValidDecksRemaining, type RandomSource } from './questionGenerator';
 import { summarizeDeckPerformance } from './performance';
+import { getDefaultShoeRunningCountRange, getRunningCountBounds } from './runningCountBounds';
 import { SHOE_SIZES, type DeckPerformanceStats, type TrueCountSettings } from '../types';
 
 export interface WeightedDeckValue {
@@ -68,6 +69,15 @@ export function calculateAdaptiveRunningCountWeights(
   history: readonly DeckPerformanceStats[],
   nowMs = Date.now(),
 ): WeightedRunningCount[] {
+  const startingDecks =
+    settings.shoeSize === 'mixed'
+      ? (SHOE_SIZES.find((shoeSize) => shoeSize >= decksRemaining) ?? 8)
+      : settings.shoeSize;
+  const configuredRange =
+    settings.runningCountRangeMode === 'custom'
+      ? { minimum: settings.runningCountMin, maximum: settings.runningCountMax }
+      : getDefaultShoeRunningCountRange(startingDecks);
+  const realisticRange = getRunningCountBounds(startingDecks, decksRemaining, configuredRange);
   const deckHistory = history.find((entry) => entry.decksRemaining === decksRemaining);
   const practiced = Object.values(deckHistory?.runningCounts ?? {});
   const averageMs =
@@ -75,8 +85,8 @@ export function calculateAdaptiveRunningCountWeights(
       Math.max(1, practiced.reduce((total, entry) => total + entry.attempted, 0)) || 3_000;
 
   return Array.from(
-    { length: settings.runningCountMax - settings.runningCountMin + 1 },
-    (_, index) => settings.runningCountMin + index,
+    { length: realisticRange.maximum - realisticRange.minimum + 1 },
+    (_, index) => realisticRange.minimum + index,
   ).map((runningCount) => {
     const stats = deckHistory?.runningCounts?.[String(runningCount)];
     if (!stats || stats.attempted === 0) return { runningCount, weight: 4 };

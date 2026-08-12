@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -8,14 +8,18 @@ import { SegmentedSelector } from '@/components/SegmentedSelector';
 import { radii, spacing } from '@/constants/theme';
 import { PatternGuide } from '@/features/true-count/components/PatternGuide';
 import { useTrueCount } from '@/features/true-count/context/TrueCountProvider';
+import { getValidDecksRemaining } from '@/features/true-count/domain/questionGenerator';
 import {
-  PATTERN_DECK_VALUES,
   type PatternDecksRemaining,
+  type ShoeSize,
 } from '@/features/true-count/types';
 import { useAppTheme } from '@/lib/useAppTheme';
 import type { SessionLength } from '@/types/training';
 
-const DECK_OPTIONS = PATTERN_DECK_VALUES.map((value) => ({ label: String(value), value }));
+const SHOE_OPTIONS: readonly { label: string; value: ShoeSize }[] = [1, 2, 4, 6, 8].map((value) => ({
+  label: String(value),
+  value: value as ShoeSize,
+}));
 const SESSION_OPTIONS: readonly { label: string; value: SessionLength }[] = [
   { label: '10', value: 10 },
   { label: '25', value: 25 },
@@ -27,6 +31,7 @@ export default function PatternRecallScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { settings, isLoading, saveSettings, startSession } = useTrueCount();
+  const [shoeSize, setShoeSize] = useState<ShoeSize>(6);
   const [decksRemaining, setDecksRemaining] = useState<PatternDecksRemaining>(3.5);
   const [sessionLength, setSessionLength] = useState<SessionLength>(settings.sessionLength);
   const [showGuide, setShowGuide] = useState(false);
@@ -36,10 +41,23 @@ export default function PatternRecallScreen() {
     if (!isLoading) setSessionLength(settings.sessionLength);
   }, [isLoading, settings.sessionLength]);
 
+  const deckOptions = useMemo(
+    () => getValidDecksRemaining(shoeSize, 0.5).map((value) => ({ label: String(value), value: value as PatternDecksRemaining })),
+    [shoeSize],
+  );
+
+  const handleShoeChange = (nextShoeSize: ShoeSize) => {
+    setShoeSize(nextShoeSize);
+    const validDeckValues = getValidDecksRemaining(nextShoeSize, 0.5);
+    if (!validDeckValues.includes(decksRemaining)) {
+      setDecksRemaining(validDeckValues[Math.min(1, validDeckValues.length - 1)] as PatternDecksRemaining);
+    }
+  };
+
   const handleStart = async () => {
     if (isStarting) return;
     const storedSettings = { ...settings, sessionLength };
-    const sessionSettings = { ...storedSettings, shoeSize: 'mixed' as const };
+    const sessionSettings = { ...storedSettings, shoeSize };
 
     setIsStarting(true);
     try {
@@ -65,10 +83,20 @@ export default function PatternRecallScreen() {
       <Text style={[styles.intro, { color: colors.textMuted }]}>Choose one deck value and memorize its running-count landmarks.</Text>
 
       <View style={styles.field}>
+        <Text style={[styles.label, { color: colors.text }]}>Starting shoe</Text>
+        <SegmentedSelector
+          accessibilityLabel="Starting shoe size"
+          options={SHOE_OPTIONS}
+          value={shoeSize}
+          onChange={handleShoeChange}
+        />
+      </View>
+
+      <View style={styles.field}>
         <Text style={[styles.label, { color: colors.text }]}>Decks remaining</Text>
         <SegmentedSelector
           accessibilityLabel="Decks remaining to study"
-          options={DECK_OPTIONS}
+          options={deckOptions}
           value={decksRemaining}
           onChange={setDecksRemaining}
         />
@@ -99,8 +127,8 @@ export default function PatternRecallScreen() {
 
       <View style={[styles.studyCard, { backgroundColor: colors.surfaceMuted }]}>
         <Text style={[styles.studyEyebrow, { color: colors.primary }]}>STUDY</Text>
-        <Text style={[styles.studyValue, { color: colors.text }]}>{decksRemaining} decks remaining</Text>
-        <Text style={[styles.studyNote, { color: colors.textMuted }]}>Every question in this drill uses this value.</Text>
+        <Text style={[styles.studyValue, { color: colors.text }]}>{shoeSize}-deck shoe · {decksRemaining} remaining</Text>
+        <Text style={[styles.studyNote, { color: colors.textMuted }]}>Every question uses this point in the shoe and a mathematically possible running count.</Text>
       </View>
 
       <AppButton

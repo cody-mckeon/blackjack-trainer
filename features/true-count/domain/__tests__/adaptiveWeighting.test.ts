@@ -86,4 +86,13 @@ describe('adaptive weighting', () => {
       weights.find((entry) => entry.runningCount === 7)!.weight,
     );
   });
+
+  it('only weights running counts that are realistic for the point in the shoe', () => {
+    const eightDeckSettings = { ...DEFAULT_TRUE_COUNT_SETTINGS, shoeSize: 8 as const };
+    const weights = calculateAdaptiveRunningCountWeights(eightDeckSettings, 7.5, [], NOW);
+
+    expect(weights[0].runningCount).toBe(-10);
+    expect(weights.at(-1)?.runningCount).toBe(10);
+    expect(weights).toHaveLength(21);
+  });
 });

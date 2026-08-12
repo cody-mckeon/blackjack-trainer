@@ -1,4 +1,5 @@
 import { calculateTrueCount } from './trueCount';
+import { getDefaultShoeRunningCountRange, getRunningCountBounds } from './runningCountBounds';
 import { SHOE_SIZES, type ShoeSize, type TrueCountQuestion, type TrueCountSettings } from '../types';
 
 export type RandomSource = () => number;
@@ -14,14 +15,15 @@ export function getValidDecksRemaining(shoeSize: ShoeSize, precision = 0.5): num
   }
 
   const values: number[] = [];
-  const steps = Math.floor((shoeSize - 1) / precision);
+  const minimumDecksRemaining = shoeSize === 1 ? 0.5 : 1;
+  const steps = Math.floor((shoeSize - minimumDecksRemaining) / precision);
 
   for (let index = 0; index <= steps; index += 1) {
     values.push(Number((shoeSize - index * precision).toFixed(2)));
   }
 
-  if (values.at(-1) !== 1) {
-    values.push(1);
+  if (values.at(-1) !== minimumDecksRemaining) {
+    values.push(minimumDecksRemaining);
   }
 
   return values;
@@ -70,14 +72,19 @@ export function generateTrueCountQuestion(
   const decksRemaining =
     options.fixedDecksRemaining ?? choose(getValidDecksRemaining(shoeSize, settings.deckPrecision), random);
 
-  if (decksRemaining > shoeSize || decksRemaining < 1) {
+  if (decksRemaining > shoeSize || decksRemaining < (shoeSize === 1 ? 0.5 : 1)) {
     throw new Error('Fixed decks remaining must fit within the selected shoe.');
   }
+  const configuredRange =
+    settings.runningCountRangeMode === 'custom'
+      ? { minimum: settings.runningCountMin, maximum: settings.runningCountMax }
+      : getDefaultShoeRunningCountRange(shoeSize);
+  const realisticRange = getRunningCountBounds(shoeSize, decksRemaining, configuredRange);
   const runningCount =
-    options.fixedRunningCount ?? randomInteger(settings.runningCountMin, settings.runningCountMax, random);
+    options.fixedRunningCount ?? randomInteger(realisticRange.minimum, realisticRange.maximum, random);
 
-  if (runningCount < settings.runningCountMin || runningCount > settings.runningCountMax || !Number.isInteger(runningCount)) {
-    throw new Error('Fixed running count must be a whole number within the configured range.');
+  if (runningCount < realisticRange.minimum || runningCount > realisticRange.maximum || !Number.isInteger(runningCount)) {
+    throw new Error('Fixed running count must be a realistic whole number within the configured range.');
   }
   const correctAnswer = calculateTrueCount(runningCount, decksRemaining);
 

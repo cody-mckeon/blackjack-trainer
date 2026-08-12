@@ -22,6 +22,7 @@ import { createSessionRecommendation } from '../domain/recommendations';
 import { classifyResponseSpeed } from '../domain/responseSpeed';
 import { EMPTY_SESSION_METRICS, recordAnswer } from '../domain/sessionMetrics';
 import { trueCountStorage } from '../storage/trueCountStorage';
+import { SHOE_SIZES } from '../types';
 import type {
   DeckPerformanceStats,
   TrueCountAnswerRecord,
@@ -71,20 +72,24 @@ function generateSessionQuestion(
   options: TrueCountSessionOptions,
   performanceHistory: readonly DeckPerformanceStats[],
 ) {
+  const questionSettings =
+    options.mode === 'adaptive' && settings.shoeSize === 'mixed'
+      ? { ...settings, shoeSize: SHOE_SIZES[Math.floor(Math.random() * SHOE_SIZES.length)] }
+      : settings;
   const fixedDecksRemaining =
     options.mode === 'pattern-recall'
       ? options.patternDecksRemaining
       : options.mode === 'adaptive'
-        ? chooseWeightedDeckValue(calculateAdaptiveWeights(settings, performanceHistory))
+        ? chooseWeightedDeckValue(calculateAdaptiveWeights(questionSettings, performanceHistory))
         : undefined;
   const fixedRunningCount =
     options.mode === 'adaptive' && fixedDecksRemaining !== undefined
       ? chooseWeightedRunningCount(
-          calculateAdaptiveRunningCountWeights(settings, fixedDecksRemaining, performanceHistory),
+          calculateAdaptiveRunningCountWeights(questionSettings, fixedDecksRemaining, performanceHistory),
         )
       : undefined;
 
-  return generateTrueCountQuestion(settings, Math.random, Date.now, { fixedDecksRemaining, fixedRunningCount });
+  return generateTrueCountQuestion(questionSettings, Math.random, Date.now, { fixedDecksRemaining, fixedRunningCount });
 }
 
 export function TrueCountProvider({ children }: PropsWithChildren) {

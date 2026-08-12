@@ -7,7 +7,17 @@ import { Screen } from '@/components/Screen';
 import { SegmentedSelector } from '@/components/SegmentedSelector';
 import { radii, spacing } from '@/constants/theme';
 import { useTrueCount } from '@/features/true-count/context/TrueCountProvider';
-import type { ShoeSizeSelection, TrueCountPracticeMode, TrueCountSettings } from '@/features/true-count/types';
+import {
+  getDefaultShoeRunningCountRange,
+  getTheoreticalRunningCountBound,
+} from '@/features/true-count/domain/runningCountBounds';
+import type {
+  RunningCountRangeMode,
+  ShoeSize,
+  ShoeSizeSelection,
+  TrueCountPracticeMode,
+  TrueCountSettings,
+} from '@/features/true-count/types';
 import type { SessionLength } from '@/types/training';
 import { useAppTheme } from '@/lib/useAppTheme';
 
@@ -27,6 +37,20 @@ const SESSION_OPTIONS: readonly { label: string; value: SessionLength }[] = [
   { label: 'Endless', value: 'endless' },
 ];
 
+const RANGE_MODE_OPTIONS: readonly { label: string; value: RunningCountRangeMode }[] = [
+  { label: 'Realistic', value: 'realistic' },
+  { label: 'Custom', value: 'custom' },
+];
+
+function formatDefaultRange(shoeSize: ShoeSizeSelection): string {
+  const formatShoe = (size: ShoeSize) => {
+    const range = getDefaultShoeRunningCountRange(size);
+    return `${size}D ${range.minimum} to +${range.maximum}`;
+  };
+
+  return shoeSize === 'mixed' ? ([1, 2, 4, 6, 8] as ShoeSize[]).map(formatShoe).join(' · ') : formatShoe(shoeSize);
+}
+
 export default function TrueCountSettingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: string }>();
@@ -34,6 +58,7 @@ export default function TrueCountSettingsScreen() {
   const { settings, isLoading, saveSettings, startSession } = useTrueCount();
   const [shoeSize, setShoeSize] = useState<ShoeSizeSelection>(settings.shoeSize);
   const [sessionLength, setSessionLength] = useState<SessionLength>(settings.sessionLength);
+  const [rangeMode, setRangeMode] = useState<RunningCountRangeMode>(settings.runningCountRangeMode);
   const [minimum, setMinimum] = useState(String(settings.runningCountMin));
   const [maximum, setMaximum] = useState(String(settings.runningCountMax));
   const [isStarting, setIsStarting] = useState(false);
@@ -43,20 +68,28 @@ export default function TrueCountSettingsScreen() {
     if (isLoading) return;
     setShoeSize(settings.shoeSize);
     setSessionLength(settings.sessionLength);
+    setRangeMode(settings.runningCountRangeMode);
     setMinimum(String(settings.runningCountMin));
     setMaximum(String(settings.runningCountMax));
   }, [isLoading, settings]);
 
   const parsedMinimum = Number(minimum);
   const parsedMaximum = Number(maximum);
+  const maximumTheoreticalBound =
+    shoeSize === 'mixed' ? getTheoreticalRunningCountBound(8) : getTheoreticalRunningCountBound(shoeSize);
   const isRangeValid =
-    Number.isInteger(parsedMinimum) && Number.isInteger(parsedMaximum) && parsedMinimum <= parsedMaximum;
+    Number.isInteger(parsedMinimum) &&
+    Number.isInteger(parsedMaximum) &&
+    parsedMinimum <= parsedMaximum &&
+    parsedMinimum >= -maximumTheoreticalBound &&
+    parsedMaximum <= maximumTheoreticalBound;
 
   const handleStart = async () => {
-    if (!isRangeValid || isStarting) return;
+    if ((rangeMode === 'custom' && !isRangeValid) || isStarting) return;
 
     const nextSettings: TrueCountSettings = {
       shoeSize,
+      runningCountRangeMode: rangeMode,
       runningCountMin: parsedMinimum,
       runningCountMax: parsedMaximum,
       deckPrecision: 0.5,
@@ -102,33 +135,50 @@ export default function TrueCountSettingsScreen() {
 
       <View style={styles.field}>
         <Text style={[styles.label, { color: colors.text }]}>Running count range</Text>
-        <View style={styles.rangeRow}>
-          <View style={styles.rangeField}>
-            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Minimum</Text>
-            <TextInput
-              accessibilityLabel="Minimum running count"
-              keyboardType="numbers-and-punctuation"
-              onChangeText={setMinimum}
-              selectTextOnFocus
-              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-              value={minimum}
-            />
+        <SegmentedSelector
+          accessibilityLabel="Running count range mode"
+          options={RANGE_MODE_OPTIONS}
+          value={rangeMode}
+          onChange={setRangeMode}
+        />
+        {rangeMode === 'realistic' ? (
+          <View style={[styles.realisticSetting, { backgroundColor: colors.surfaceMuted }]}>
+            <Text style={[styles.readonlyValue, { color: colors.text }]}>Realistic RC generation</Text>
+            <Text style={[styles.readonlyNote, { color: colors.textMuted }]}>Running-count questions are adjusted based on shoe size and how many decks have already been played.</Text>
+            <Text style={[styles.boundSummary, { color: colors.text }]}>Broad defaults: {formatDefaultRange(shoeSize)}</Text>
           </View>
-          <View style={styles.rangeField}>
-            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Maximum</Text>
-            <TextInput
-              accessibilityLabel="Maximum running count"
-              keyboardType="numbers-and-punctuation"
-              onChangeText={setMaximum}
-              selectTextOnFocus
-              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
-              value={maximum}
-            />
-          </View>
-        </View>
-        {!isRangeValid ? (
-          <Text accessibilityRole="alert" style={[styles.error, { color: colors.danger }]}>Enter whole numbers with the minimum no greater than the maximum.</Text>
-        ) : null}
+        ) : (
+          <>
+            <View style={[styles.rangeRow, styles.customRange]}>
+              <View style={styles.rangeField}>
+                <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Minimum</Text>
+                <TextInput
+                  accessibilityLabel="Minimum running count"
+                  keyboardType="numbers-and-punctuation"
+                  onChangeText={setMinimum}
+                  selectTextOnFocus
+                  style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                  value={minimum}
+                />
+              </View>
+              <View style={styles.rangeField}>
+                <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Maximum</Text>
+                <TextInput
+                  accessibilityLabel="Maximum running count"
+                  keyboardType="numbers-and-punctuation"
+                  onChangeText={setMaximum}
+                  selectTextOnFocus
+                  style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                  value={maximum}
+                />
+              </View>
+            </View>
+            <Text style={[styles.limitNote, { color: colors.textMuted }]}>Theoretical limit for this selection: ±{maximumTheoreticalBound}</Text>
+            {!isRangeValid ? (
+              <Text accessibilityRole="alert" style={[styles.error, { color: colors.danger }]}>Use whole numbers from {-maximumTheoreticalBound} to +{maximumTheoreticalBound}, with minimum no greater than maximum.</Text>
+            ) : null}
+          </>
+        )}
       </View>
 
       <View style={styles.field}>
@@ -150,7 +200,7 @@ export default function TrueCountSettingsScreen() {
       </View>
 
       <AppButton
-        disabled={!isRangeValid || isStarting}
+        disabled={(rangeMode === 'custom' && !isRangeValid) || isStarting}
         label={isStarting ? 'Starting…' : 'Start training'}
         onPress={() => void handleStart()}
         style={styles.startButton}
@@ -220,6 +270,23 @@ const styles = StyleSheet.create({
   readonlyNote: {
     marginTop: spacing.xs,
     fontSize: 13,
+  },
+  realisticSetting: {
+    marginTop: spacing.md,
+    borderRadius: radii.md,
+    padding: spacing.md,
+  },
+  boundSummary: {
+    marginTop: spacing.sm,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  customRange: {
+    marginTop: spacing.md,
+  },
+  limitNote: {
+    marginTop: spacing.sm,
+    fontSize: 12,
   },
   startButton: {
     marginTop: spacing.sm,
