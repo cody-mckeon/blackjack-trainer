@@ -8,6 +8,7 @@ interface TrainingModeCardProps {
   description: string;
   enabled?: boolean;
   onPress?: () => void;
+  actionLabel?: string;
 }
 
 export function TrainingModeCard({
@@ -15,6 +16,7 @@ export function TrainingModeCard({
   description,
   enabled = false,
   onPress,
+  actionLabel = 'Train',
 }: TrainingModeCardProps) {
   const { colors } = useAppTheme();
 
@@ -36,7 +38,7 @@ export function TrainingModeCard({
       </View>
       <View style={[styles.badge, { backgroundColor: enabled ? colors.primary : colors.surfaceMuted }]}>
         <Text style={[styles.badgeText, { color: enabled ? colors.onPrimary : colors.textMuted }]}>
-          {enabled ? 'Train' : 'Soon'}
+          {enabled ? actionLabel : 'Soon'}
         </Text>
       </View>
     </Pressable>

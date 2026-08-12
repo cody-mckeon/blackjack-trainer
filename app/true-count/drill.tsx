@@ -5,6 +5,8 @@ import { AppButton } from '@/components/AppButton';
 import { Screen } from '@/components/Screen';
 import { radii, spacing } from '@/constants/theme';
 import { useTrueCount } from '@/features/true-count/context/TrueCountProvider';
+import { createPatternCue } from '@/features/true-count/domain/patternRanges';
+import { getResponseSpeedLabel } from '@/features/true-count/domain/responseSpeed';
 import { formatSignedCount } from '@/features/true-count/domain/trueCount';
 import { formatPercentage, formatResponseTime } from '@/lib/formatters';
 import { useAppTheme } from '@/lib/useAppTheme';
@@ -15,10 +17,18 @@ export default function TrueCountDrillScreen() {
   const { session, submitAnswer, nextQuestion, endSession, clearSession } = useTrueCount();
 
   if (!session) {
-    return <Redirect href="/true-count/settings" />;
+    return <Redirect href="/true-count" />;
   }
 
   const { currentQuestion, feedback, metrics, settings, hasReachedLimit } = session;
+  const patternCue = feedback?.isCorrect
+    ? null
+    : createPatternCue(currentQuestion.runningCount, currentQuestion.decksRemaining);
+  const quotient = Number((currentQuestion.runningCount / currentQuestion.decksRemaining).toFixed(2));
+  const contextLabel =
+    session.mode === 'pattern-recall'
+      ? `STUDY · ${currentQuestion.decksRemaining} DECKS`
+      : `${session.mode === 'adaptive' ? 'ADAPTIVE · ' : ''}${currentQuestion.shoeSize}-DECK SHOE`;
   const progressLabel =
     settings.sessionLength === 'endless'
       ? `${metrics.attempted} answered`
@@ -30,7 +40,7 @@ export default function TrueCountDrillScreen() {
       router.replace('/true-count/summary');
     } else {
       clearSession();
-      router.replace('/');
+      router.replace('/true-count');
     }
   };
 
@@ -50,7 +60,7 @@ export default function TrueCountDrillScreen() {
       </View>
 
       <View style={styles.questionArea}>
-        <Text style={[styles.shoe, { color: colors.textMuted }]}>{currentQuestion.shoeSize}-DECK SHOE</Text>
+        <Text style={[styles.shoe, { color: colors.textMuted }]}>{contextLabel}</Text>
 
         <View style={styles.factsRow}>
           <View style={styles.fact}>
@@ -118,13 +128,31 @@ export default function TrueCountDrillScreen() {
                 {feedback.isCorrect ? 'Correct' : 'Incorrect'}
               </Text>
               <Text style={[styles.responseTime, { color: colors.textMuted }]}>
-                {formatResponseTime(feedback.responseTimeMs)}
+                {getResponseSpeedLabel(feedback.responseSpeed)} · {formatResponseTime(feedback.responseTimeMs)}
               </Text>
             </View>
-            <Text style={[styles.calculation, { color: colors.text }]}>
-              {formatSignedCount(currentQuestion.runningCount)} ÷ {currentQuestion.decksRemaining} ={' '}
-              {formatSignedCount(feedback.correctAnswer)}
-            </Text>
+            {feedback.isCorrect ? (
+              <Text style={[styles.calculation, { color: colors.text }]}>
+                {formatSignedCount(currentQuestion.runningCount)} ÷ {currentQuestion.decksRemaining} →{' '}
+                {formatSignedCount(feedback.correctAnswer)}
+              </Text>
+            ) : (
+              <>
+                <Text style={[styles.answerCorrection, { color: colors.text }]}>
+                  Your answer {formatSignedCount(feedback.answer)} · Correct {formatSignedCount(feedback.correctAnswer)}
+                </Text>
+                <Text style={[styles.calculation, { color: colors.text }]}>
+                  {formatSignedCount(currentQuestion.runningCount)} ÷ {currentQuestion.decksRemaining} ≈ {quotient}
+                </Text>
+                <Text style={[styles.truncation, { color: colors.text }]}>Truncate toward zero → {formatSignedCount(feedback.correctAnswer)}</Text>
+                {patternCue ? (
+                  <Text style={[styles.patternCue, { color: colors.textMuted }]}>
+                    <Text style={styles.patternCueLabel}>Pattern cue: </Text>
+                    {patternCue}
+                  </Text>
+                ) : null}
+              </>
+            )}
           </View>
         ) : null}
       </View>
@@ -260,6 +288,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
+  },
+  answerCorrection: {
+    marginTop: spacing.sm,
+    fontSize: 14,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  truncation: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  patternCue: {
+    marginTop: spacing.sm,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  patternCueLabel: {
+    fontWeight: '900',
   },
   bottomArea: {
     paddingTop: spacing.sm,

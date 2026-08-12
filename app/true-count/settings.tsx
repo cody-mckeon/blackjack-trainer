@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AppButton } from '@/components/AppButton';
 import { Screen } from '@/components/Screen';
 import { SegmentedSelector } from '@/components/SegmentedSelector';
 import { radii, spacing } from '@/constants/theme';
 import { useTrueCount } from '@/features/true-count/context/TrueCountProvider';
-import type { ShoeSizeSelection, TrueCountSettings } from '@/features/true-count/types';
+import type { ShoeSizeSelection, TrueCountPracticeMode, TrueCountSettings } from '@/features/true-count/types';
 import type { SessionLength } from '@/types/training';
 import { useAppTheme } from '@/lib/useAppTheme';
 
@@ -29,6 +29,7 @@ const SESSION_OPTIONS: readonly { label: string; value: SessionLength }[] = [
 
 export default function TrueCountSettingsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string }>();
   const { colors } = useAppTheme();
   const { settings, isLoading, saveSettings, startSession } = useTrueCount();
   const [shoeSize, setShoeSize] = useState<ShoeSizeSelection>(settings.shoeSize);
@@ -36,6 +37,7 @@ export default function TrueCountSettingsScreen() {
   const [minimum, setMinimum] = useState(String(settings.runningCountMin));
   const [maximum, setMaximum] = useState(String(settings.runningCountMax));
   const [isStarting, setIsStarting] = useState(false);
+  const mode: TrueCountPracticeMode = params.mode === 'adaptive' ? 'adaptive' : 'standard';
 
   useEffect(() => {
     if (isLoading) return;
@@ -64,7 +66,7 @@ export default function TrueCountSettingsScreen() {
     setIsStarting(true);
     try {
       await saveSettings(nextSettings);
-      startSession(nextSettings);
+      startSession(nextSettings, { mode });
       router.push('/true-count/drill');
     } finally {
       setIsStarting(false);
@@ -81,8 +83,12 @@ export default function TrueCountSettingsScreen() {
 
   return (
     <Screen>
-      <Text style={[styles.heading, { color: colors.text }]}>Set up your drill</Text>
-      <Text style={[styles.intro, { color: colors.textMuted }]}>Choose a pace, then get straight to the count.</Text>
+      <Text style={[styles.heading, { color: colors.text }]}>{mode === 'adaptive' ? 'Adaptive Practice' : 'Standard Practice'}</Text>
+      <Text style={[styles.intro, { color: colors.textMuted }]}>
+        {mode === 'adaptive'
+          ? 'Your weaker, slower, and overdue deck patterns will appear more often.'
+          : 'Choose a pace, then get straight to the count.'}
+      </Text>
 
       <View style={styles.field}>
         <Text style={[styles.label, { color: colors.text }]}>Shoe size</Text>

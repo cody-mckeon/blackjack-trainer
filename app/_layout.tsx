@@ -33,7 +33,9 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="true-count/settings" options={{ title: 'True Count Trainer' }} />
+            <Stack.Screen name="true-count/index" options={{ title: 'True Count Trainer' }} />
+            <Stack.Screen name="true-count/settings" options={{ title: 'Practice Setup' }} />
+            <Stack.Screen name="true-count/pattern-recall" options={{ title: 'Pattern Recall' }} />
             <Stack.Screen
               name="true-count/drill"
               options={{ title: 'True Count', headerBackVisible: false, gestureEnabled: false }}

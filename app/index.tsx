@@ -50,7 +50,7 @@ export default function HomeScreen() {
             title="True Count Trainer"
             description="Convert running counts using decks remaining."
             enabled
-            onPress={() => router.push('/true-count/settings')}
+            onPress={() => router.push('/true-count')}
           />
           {COMING_SOON_MODES.map(([title, description]) => (
             <TrainingModeCard key={title} title={title} description={description} />
