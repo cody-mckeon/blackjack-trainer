@@ -1,16 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { DEFAULT_TRUE_COUNT_SETTINGS, RECENT_SESSION_LIMIT } from '../constants';
-import { SHOE_SIZES, type TrueCountSessionSummary, type TrueCountSettings } from '../types';
+import {
+  SHOE_SIZES,
+  type DeckPerformanceStats,
+  type TrueCountSessionSummary,
+  type TrueCountSettings,
+} from '../types';
 
 const SETTINGS_KEY = '@blackjack-trainer/true-count/settings/v1';
 const RECENT_SESSIONS_KEY = '@blackjack-trainer/true-count/recent-sessions/v1';
+const PERFORMANCE_HISTORY_KEY = '@blackjack-trainer/true-count/performance/v1';
 
 export interface TrueCountStorage {
   getSettings(): Promise<TrueCountSettings>;
   saveSettings(settings: TrueCountSettings): Promise<void>;
   getRecentSessions(): Promise<TrueCountSessionSummary[]>;
   saveRecentSessions(sessions: TrueCountSessionSummary[]): Promise<void>;
+  getPerformanceHistory(): Promise<DeckPerformanceStats[]>;
+  savePerformanceHistory(history: DeckPerformanceStats[]): Promise<void>;
 }
 
 function isShoeSelection(value: unknown): value is TrueCountSettings['shoeSize'] {
@@ -66,8 +74,18 @@ export const trueCountStorage: TrueCountStorage = {
     if (!stored) return [];
 
     try {
-      const sessions = JSON.parse(stored);
-      return Array.isArray(sessions) ? (sessions as TrueCountSessionSummary[]) : [];
+      const sessions = JSON.parse(stored) as Partial<TrueCountSessionSummary>[];
+      if (!Array.isArray(sessions)) return [];
+
+      return sessions.map((session) => ({
+        ...(session as TrueCountSessionSummary),
+        automaticAnswers: session.automaticAnswers ?? 0,
+        automaticPercentage: session.automaticPercentage ?? 0,
+        mode: session.mode ?? 'standard',
+        deckPerformance: session.deckPerformance ?? [],
+        weakestPatterns: session.weakestPatterns ?? [],
+        recommendation: session.recommendation ?? 'Keep practicing to reveal your strongest patterns.',
+      }));
     } catch {
       return [];
     }
@@ -75,5 +93,23 @@ export const trueCountStorage: TrueCountStorage = {
 
   async saveRecentSessions(sessions) {
     await AsyncStorage.setItem(RECENT_SESSIONS_KEY, JSON.stringify(sessions.slice(0, RECENT_SESSION_LIMIT)));
+  },
+
+  async getPerformanceHistory() {
+    const stored = await AsyncStorage.getItem(PERFORMANCE_HISTORY_KEY);
+    if (!stored) return [];
+
+    try {
+      const history = JSON.parse(stored) as DeckPerformanceStats[];
+      return Array.isArray(history)
+        ? history.map((entry) => ({ ...entry, runningCounts: entry.runningCounts ?? {} }))
+        : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async savePerformanceHistory(history) {
+    await AsyncStorage.setItem(PERFORMANCE_HISTORY_KEY, JSON.stringify(history));
   },
 };

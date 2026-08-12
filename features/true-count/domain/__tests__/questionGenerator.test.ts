@@ -46,4 +46,16 @@ describe('generateTrueCountQuestion', () => {
     expect(question.shoeSize).toBe(8);
     expect(question.decksRemaining).toBe(1);
   });
+
+  it('supports a fixed half-deck value for Pattern Recall', () => {
+    const question = generateTrueCountQuestion(
+      DEFAULT_TRUE_COUNT_SETTINGS,
+      () => 0.5,
+      () => 123,
+      { fixedDecksRemaining: 3.5 },
+    );
+
+    expect(question.decksRemaining).toBe(3.5);
+    expect(question.shoeSize).toBeGreaterThanOrEqual(3.5);
+  });
 });

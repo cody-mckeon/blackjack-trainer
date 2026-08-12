@@ -1,19 +1,45 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PropsWithChildren,
+} from 'react';
 
-import { DEFAULT_TRUE_COUNT_SETTINGS, RECENT_SESSION_LIMIT } from '../constants';
+import { DEFAULT_TRUE_COUNT_SETTINGS, RECENT_SESSION_LIMIT, WEAK_PATTERN_LIMIT } from '../constants';
+import {
+  calculateAdaptiveRunningCountWeights,
+  calculateAdaptiveWeights,
+  chooseWeightedDeckValue,
+  chooseWeightedRunningCount,
+} from '../domain/adaptiveWeighting';
 import { generateTrueCountQuestion } from '../domain/questionGenerator';
+import { aggregateAnswerRecords, rankWeakestPatterns, updatePerformanceHistory } from '../domain/performance';
+import { createSessionRecommendation } from '../domain/recommendations';
+import { classifyResponseSpeed } from '../domain/responseSpeed';
 import { EMPTY_SESSION_METRICS, recordAnswer } from '../domain/sessionMetrics';
 import { trueCountStorage } from '../storage/trueCountStorage';
-import type { TrueCountSessionState, TrueCountSessionSummary, TrueCountSettings } from '../types';
+import type {
+  DeckPerformanceStats,
+  TrueCountAnswerRecord,
+  TrueCountSessionOptions,
+  TrueCountSessionState,
+  TrueCountSessionSummary,
+  TrueCountSettings,
+} from '../types';
 
 interface TrueCountContextValue {
   settings: TrueCountSettings;
   isLoading: boolean;
   recentSessions: TrueCountSessionSummary[];
+  performanceHistory: DeckPerformanceStats[];
   session: TrueCountSessionState | null;
   lastSummary: TrueCountSessionSummary | null;
   saveSettings: (settings: TrueCountSettings) => Promise<void>;
-  startSession: (settings?: TrueCountSettings) => void;
+  startSession: (settings?: TrueCountSettings, options?: TrueCountSessionOptions) => void;
   submitAnswer: (answer: number) => void;
   nextQuestion: () => void;
   endSession: () => TrueCountSessionSummary | null;
@@ -23,30 +49,70 @@ interface TrueCountContextValue {
 const TrueCountContext = createContext<TrueCountContextValue | undefined>(undefined);
 
 function createSummary(session: TrueCountSessionState): TrueCountSessionSummary {
+  const deckPerformance = aggregateAnswerRecords(session.answers);
+  const weakestPatterns = rankWeakestPatterns(deckPerformance, WEAK_PATTERN_LIMIT);
+
   return {
     ...session.metrics,
     id: `${Date.now()}-${session.metrics.attempted}`,
     completedAt: new Date().toISOString(),
     shoeSize: session.settings.shoeSize,
     sessionLength: session.settings.sessionLength,
+    mode: session.mode,
+    deckPerformance,
+    weakestPatterns,
+    recommendation: createSessionRecommendation(deckPerformance),
+    patternDecksRemaining: session.patternDecksRemaining,
   };
+}
+
+function generateSessionQuestion(
+  settings: TrueCountSettings,
+  options: TrueCountSessionOptions,
+  performanceHistory: readonly DeckPerformanceStats[],
+) {
+  const fixedDecksRemaining =
+    options.mode === 'pattern-recall'
+      ? options.patternDecksRemaining
+      : options.mode === 'adaptive'
+        ? chooseWeightedDeckValue(calculateAdaptiveWeights(settings, performanceHistory))
+        : undefined;
+  const fixedRunningCount =
+    options.mode === 'adaptive' && fixedDecksRemaining !== undefined
+      ? chooseWeightedRunningCount(
+          calculateAdaptiveRunningCountWeights(settings, fixedDecksRemaining, performanceHistory),
+        )
+      : undefined;
+
+  return generateTrueCountQuestion(settings, Math.random, Date.now, { fixedDecksRemaining, fixedRunningCount });
 }
 
 export function TrueCountProvider({ children }: PropsWithChildren) {
   const [settings, setSettings] = useState(DEFAULT_TRUE_COUNT_SETTINGS);
   const [recentSessions, setRecentSessions] = useState<TrueCountSessionSummary[]>([]);
+  const [performanceHistory, setPerformanceHistory] = useState<DeckPerformanceStats[]>([]);
   const [session, setSession] = useState<TrueCountSessionState | null>(null);
   const [lastSummary, setLastSummary] = useState<TrueCountSessionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const sessionRef = useRef<TrueCountSessionState | null>(null);
+  const recentSessionsRef = useRef<TrueCountSessionSummary[]>([]);
+  const performanceHistoryRef = useRef<DeckPerformanceStats[]>([]);
 
   useEffect(() => {
     let active = true;
 
-    Promise.all([trueCountStorage.getSettings(), trueCountStorage.getRecentSessions()])
-      .then(([storedSettings, storedSessions]) => {
+    Promise.all([
+      trueCountStorage.getSettings(),
+      trueCountStorage.getRecentSessions(),
+      trueCountStorage.getPerformanceHistory(),
+    ])
+      .then(([storedSettings, storedSessions, storedPerformance]) => {
         if (!active) return;
         setSettings(storedSettings);
         setRecentSessions(storedSessions);
+        recentSessionsRef.current = storedSessions;
+        setPerformanceHistory(storedPerformance);
+        performanceHistoryRef.current = storedPerformance;
       })
       .catch(() => {
         // Storage can be unavailable (for example, restricted browser mode).
@@ -71,80 +137,114 @@ export function TrueCountProvider({ children }: PropsWithChildren) {
   }, []);
 
   const startSession = useCallback(
-    (sessionSettings = settings) => {
+    (sessionSettings = settings, options: TrueCountSessionOptions = { mode: 'standard' }) => {
       setLastSummary(null);
-      setSession({
+      const nextSession: TrueCountSessionState = {
         settings: sessionSettings,
+        mode: options.mode,
+        patternDecksRemaining: options.patternDecksRemaining,
         metrics: EMPTY_SESSION_METRICS,
-        currentQuestion: generateTrueCountQuestion(sessionSettings),
+        answers: [],
+        currentQuestion: generateSessionQuestion(sessionSettings, options, performanceHistoryRef.current),
         questionStartedAt: Date.now(),
         feedback: null,
         hasReachedLimit: false,
-      });
+      };
+      sessionRef.current = nextSession;
+      setSession(nextSession);
     },
     [settings],
   );
 
   const submitAnswer = useCallback((answer: number) => {
+    const current = sessionRef.current;
+    if (!current || current.feedback) return;
+
     const answeredAt = Date.now();
+    const isCorrect = answer === current.currentQuestion.correctAnswer;
+    const responseTimeMs = answeredAt - current.questionStartedAt;
+    const responseSpeed = classifyResponseSpeed(responseTimeMs);
+    const metrics = recordAnswer(current.metrics, isCorrect, responseTimeMs);
+    const hasReachedLimit =
+      current.settings.sessionLength !== 'endless' && metrics.attempted >= current.settings.sessionLength;
+    const record: TrueCountAnswerRecord = {
+      decksRemaining: current.currentQuestion.decksRemaining,
+      runningCount: current.currentQuestion.runningCount,
+      correctAnswer: current.currentQuestion.correctAnswer,
+      answer,
+      isCorrect,
+      responseTimeMs,
+      responseSpeed,
+      answeredAt: new Date(answeredAt).toISOString(),
+    };
+    const nextSession: TrueCountSessionState = {
+      ...current,
+      metrics,
+      answers: [...current.answers, record],
+      feedback: {
+        answer,
+        correctAnswer: current.currentQuestion.correctAnswer,
+        isCorrect,
+        responseTimeMs,
+        responseSpeed,
+      },
+      hasReachedLimit,
+    };
+    const updatedPerformance = updatePerformanceHistory(performanceHistoryRef.current, record);
 
-    setSession((current) => {
-      if (!current || current.feedback) return current;
-
-      const isCorrect = answer === current.currentQuestion.correctAnswer;
-      const responseTimeMs = answeredAt - current.questionStartedAt;
-      const metrics = recordAnswer(current.metrics, isCorrect, responseTimeMs);
-      const hasReachedLimit =
-        current.settings.sessionLength !== 'endless' && metrics.attempted >= current.settings.sessionLength;
-
-      return {
-        ...current,
-        metrics,
-        feedback: {
-          answer,
-          correctAnswer: current.currentQuestion.correctAnswer,
-          isCorrect,
-          responseTimeMs,
-        },
-        hasReachedLimit,
-      };
-    });
+    sessionRef.current = nextSession;
+    setSession(nextSession);
+    performanceHistoryRef.current = updatedPerformance;
+    setPerformanceHistory(updatedPerformance);
+    void trueCountStorage.savePerformanceHistory(updatedPerformance).catch(() => undefined);
   }, []);
 
   const nextQuestion = useCallback(() => {
-    setSession((current) => {
-      if (!current || !current.feedback || current.hasReachedLimit) return current;
+    const current = sessionRef.current;
+    if (!current || !current.feedback || current.hasReachedLimit) return;
 
-      return {
-        ...current,
-        currentQuestion: generateTrueCountQuestion(current.settings),
-        questionStartedAt: Date.now(),
-        feedback: null,
-      };
-    });
+    const nextSession: TrueCountSessionState = {
+      ...current,
+      currentQuestion: generateSessionQuestion(
+        current.settings,
+        { mode: current.mode, patternDecksRemaining: current.patternDecksRemaining },
+        performanceHistoryRef.current,
+      ),
+      questionStartedAt: Date.now(),
+      feedback: null,
+    };
+    sessionRef.current = nextSession;
+    setSession(nextSession);
   }, []);
 
   const endSession = useCallback(() => {
-    if (!session || session.metrics.attempted === 0) return null;
+    const current = sessionRef.current;
+    if (!current || current.metrics.attempted === 0) return null;
 
-    const summary = createSummary(session);
-    const updatedRecentSessions = [summary, ...recentSessions].slice(0, RECENT_SESSION_LIMIT);
+    const summary = createSummary(current);
+    const updatedRecentSessions = [summary, ...recentSessionsRef.current].slice(0, RECENT_SESSION_LIMIT);
 
     setLastSummary(summary);
+    recentSessionsRef.current = updatedRecentSessions;
     setRecentSessions(updatedRecentSessions);
+    sessionRef.current = null;
     setSession(null);
     void trueCountStorage.saveRecentSessions(updatedRecentSessions).catch(() => undefined);
 
     return summary;
-  }, [recentSessions, session]);
+  }, []);
 
-  const clearSession = useCallback(() => setSession(null), []);
+  const clearSession = useCallback(() => {
+    sessionRef.current = null;
+    setSession(null);
+  }, []);
 
   const value = useMemo(
     () => ({
       settings,
       isLoading,
       recentSessions,
+      performanceHistory,
       session,
       lastSummary,
       saveSettings,
@@ -158,6 +258,7 @@ export function TrueCountProvider({ children }: PropsWithChildren) {
       settings,
       isLoading,
       recentSessions,
+      performanceHistory,
       session,
       lastSummary,
       saveSettings,

@@ -13,8 +13,10 @@ describe('recordAnswer', () => {
       bestStreak: 2,
       totalResponseTimeMs: 6000,
       averageResponseTimeMs: 2000,
+      automaticAnswers: 1,
     });
     expect(third.accuracyPercentage).toBeCloseTo(66.67, 2);
+    expect(third.automaticPercentage).toBeCloseTo(33.33, 2);
   });
 
   it('does not allow a negative response time to reduce the average', () => {

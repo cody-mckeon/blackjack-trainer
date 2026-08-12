@@ -8,4 +8,6 @@ export interface SessionMetrics {
   bestStreak: number;
   averageResponseTimeMs: number;
   totalResponseTimeMs: number;
+  automaticAnswers: number;
+  automaticPercentage: number;
 }

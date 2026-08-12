@@ -3,6 +3,11 @@ import { SHOE_SIZES, type ShoeSize, type TrueCountQuestion, type TrueCountSettin
 
 export type RandomSource = () => number;
 
+export interface QuestionGenerationOptions {
+  fixedDecksRemaining?: number;
+  fixedRunningCount?: number;
+}
+
 export function getValidDecksRemaining(shoeSize: ShoeSize, precision = 0.5): number[] {
   if (precision <= 0 || precision > 1) {
     throw new Error('Deck precision must be greater than zero and no more than one deck.');
@@ -52,10 +57,28 @@ export function generateTrueCountQuestion(
   settings: TrueCountSettings,
   random: RandomSource = Math.random,
   now: () => number = Date.now,
+  options: QuestionGenerationOptions = {},
 ): TrueCountQuestion {
-  const shoeSize = settings.shoeSize === 'mixed' ? choose(SHOE_SIZES, random) : settings.shoeSize;
-  const decksRemaining = choose(getValidDecksRemaining(shoeSize, settings.deckPrecision), random);
-  const runningCount = randomInteger(settings.runningCountMin, settings.runningCountMax, random);
+  const shoeSize =
+    options.fixedDecksRemaining === undefined
+      ? settings.shoeSize === 'mixed'
+        ? choose(SHOE_SIZES, random)
+        : settings.shoeSize
+      : settings.shoeSize === 'mixed'
+        ? (SHOE_SIZES.find((size) => size >= options.fixedDecksRemaining!) ?? 8)
+        : settings.shoeSize;
+  const decksRemaining =
+    options.fixedDecksRemaining ?? choose(getValidDecksRemaining(shoeSize, settings.deckPrecision), random);
+
+  if (decksRemaining > shoeSize || decksRemaining < 1) {
+    throw new Error('Fixed decks remaining must fit within the selected shoe.');
+  }
+  const runningCount =
+    options.fixedRunningCount ?? randomInteger(settings.runningCountMin, settings.runningCountMax, random);
+
+  if (runningCount < settings.runningCountMin || runningCount > settings.runningCountMax || !Number.isInteger(runningCount)) {
+    throw new Error('Fixed running count must be a whole number within the configured range.');
+  }
   const correctAnswer = calculateTrueCount(runningCount, decksRemaining);
 
   return {
