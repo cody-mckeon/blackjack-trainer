@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { TrueCountProvider } from '@/features/true-count/context/TrueCountProvider';
+import { BasicStrategyProvider } from '@/features/basic-strategy/context/BasicStrategyProvider';
 import { useAppTheme } from '@/lib/useAppTheme';
 
 export default function RootLayout() {
@@ -23,6 +24,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider value={navigationTheme}>
         <TrueCountProvider>
+          <BasicStrategyProvider>
           <Stack
             screenOptions={{
               headerBackTitle: 'Back',
@@ -44,8 +46,14 @@ export default function RootLayout() {
               name="true-count/summary"
               options={{ title: 'Session Complete', headerBackVisible: false, gestureEnabled: false }}
             />
+            <Stack.Screen name="basic-strategy/index" options={{ title: 'Basic Strategy Trainer' }} />
+            <Stack.Screen name="basic-strategy/setup" options={{ title: 'Practice Setup' }} />
+            <Stack.Screen name="basic-strategy/pattern-recall" options={{ title: 'Pattern Recall' }} />
+            <Stack.Screen name="basic-strategy/drill" options={{ title: 'Basic Strategy', headerBackVisible: false, gestureEnabled: false }} />
+            <Stack.Screen name="basic-strategy/summary" options={{ title: 'Session Complete', headerBackVisible: false, gestureEnabled: false }} />
           </Stack>
           <StatusBar style="auto" />
+          </BasicStrategyProvider>
         </TrueCountProvider>
       </ThemeProvider>
     </SafeAreaProvider>

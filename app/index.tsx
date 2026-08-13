@@ -11,7 +11,6 @@ import { formatPercentage, formatResponseTime } from '@/lib/formatters';
 
 const COMING_SOON_MODES = [
   ['Running Count', 'Build speed and accuracy through a full shoe.'],
-  ['Basic Strategy', 'Practice the correct play for every hand.'],
   ['Casino Simulation', 'Combine decisions in realistic rounds.'],
   ['Deviations', 'Train index plays from the true count.'],
 ] as const;
@@ -51,6 +50,12 @@ export default function HomeScreen() {
             description="Convert running counts using decks remaining."
             enabled
             onPress={() => router.push('/true-count')}
+          />
+          <TrainingModeCard
+            title="Basic Strategy Trainer"
+            description="Read real cards and make the correct H17 or S17 play."
+            enabled
+            onPress={() => router.push('/basic-strategy')}
           />
           {COMING_SOON_MODES.map(([title, description]) => (
             <TrainingModeCard key={title} title={title} description={description} />
