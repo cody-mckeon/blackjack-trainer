@@ -11,6 +11,7 @@ import { useBasicStrategy } from '@/features/basic-strategy/context/BasicStrateg
 import { RESPONSE_SPEED_LABELS } from '@/features/basic-strategy/domain/responseSpeed';
 import type { BasicStrategyAction } from '@/features/basic-strategy/types';
 import { useCardSounds } from '@/hooks/useCardSounds';
+import { useCardSoundPreference } from '@/hooks/useCardSoundPreference';
 import { getHandClassification } from '@/lib/blackjack/handEvaluation';
 import { formatPercentage, formatResponseTime } from '@/lib/formatters';
 import { useAppTheme } from '@/lib/useAppTheme';
@@ -19,7 +20,8 @@ export default function BasicStrategyDrillScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { session, submitAnswer, nextQuestion, endSession, clearSession } = useBasicStrategy();
-  const { playDealSequence } = useCardSounds(session?.settings.cardSoundsEnabled ?? false);
+  const { cardSoundsEnabled } = useCardSoundPreference();
+  const { playDealSequence } = useCardSounds(cardSoundsEnabled);
   const questionId = session?.currentQuestion.id;
 
   useEffect(() => {

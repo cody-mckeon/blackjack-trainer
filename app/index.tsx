@@ -10,7 +10,8 @@ import { useAppTheme } from '@/lib/useAppTheme';
 import { formatPercentage, formatResponseTime } from '@/lib/formatters';
 
 const COMING_SOON_MODES = [
-  ['Running Count', 'Build speed and accuracy through a full shoe.'],
+  ['Deck Estimation Trainer', 'Estimate decks remaining from a visual discard tray.'],
+  ['Combined Count Trainer', 'Combine running count, decks remaining, and true count.'],
   ['Casino Simulation', 'Combine decisions in realistic rounds.'],
   ['Deviations', 'Train index plays from the true count.'],
 ] as const;
@@ -56,6 +57,12 @@ export default function HomeScreen() {
             description="Read real cards and make the correct H17 or S17 play."
             enabled
             onPress={() => router.push('/basic-strategy')}
+          />
+          <TrainingModeCard
+            title="Running Count Trainer"
+            description="Build fast, automatic Hi-Lo counting across complete shoes."
+            enabled
+            onPress={() => router.push('/running-count')}
           />
           {COMING_SOON_MODES.map(([title, description]) => (
             <TrainingModeCard key={title} title={title} description={description} />

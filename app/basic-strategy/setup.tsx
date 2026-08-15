@@ -9,6 +9,7 @@ import { radii, spacing } from '@/constants/theme';
 import { useBasicStrategy } from '@/features/basic-strategy/context/BasicStrategyProvider';
 import type { BasicStrategyPracticeMode, HandCategory } from '@/features/basic-strategy/types';
 import { useAppTheme } from '@/lib/useAppTheme';
+import { useCardSoundPreference } from '@/hooks/useCardSoundPreference';
 
 const RULE_OPTIONS = [{ label: 'H17', value: 'H17' }, { label: 'S17', value: 'S17' }] as const;
 const TOTAL_OPTIONS = [
@@ -29,6 +30,7 @@ export default function BasicStrategySetupScreen() {
   const mode: BasicStrategyPracticeMode = params.mode === 'category' || params.mode === 'adaptive' ? params.mode : 'standard';
   const { colors } = useAppTheme();
   const { settings, saveSettings, startSession } = useBasicStrategy();
+  const { cardSoundsEnabled, setCardSoundsEnabled } = useCardSoundPreference();
   const [draft, setDraft] = useState(settings);
   const [category, setCategory] = useState<HandCategory>('hard');
 
@@ -74,7 +76,7 @@ export default function BasicStrategySetupScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Card Sounds</Text>
             <Text style={[styles.help, { color: colors.textMuted }]}>Quick local deal sounds. No background music.</Text>
           </View>
-          <Switch accessibilityLabel="Card sounds" value={draft.cardSoundsEnabled} onValueChange={(cardSoundsEnabled) => updateDraft({ ...draft, cardSoundsEnabled })} trackColor={{ true: colors.primary }} />
+          <Switch accessibilityLabel="Card sounds" value={cardSoundsEnabled} onValueChange={(enabled) => { void setCardSoundsEnabled(enabled); updateDraft({ ...draft, cardSoundsEnabled: enabled }); }} trackColor={{ true: colors.primary }} />
         </View>
       </View>
 
