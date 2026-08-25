@@ -3,6 +3,7 @@ import {
   DISCARD_TRAY_PHOTOS,
   getDiscardTrayPhoto,
   getDiscardTrayPhotos,
+  getFirstAvailableDiscardPhotoIndex,
 } from '../discardTrayPhotos';
 import { calculateDecksRemaining } from '../../domain/deckCalculations';
 
@@ -23,6 +24,12 @@ describe('discard-tray photo registry', () => {
     expect(getDiscardTrayPhotos(325)).toEqual([]);
     expect(getDiscardTrayPhoto(364)).toBeUndefined();
     expect(getDiscardTrayPhoto(51.6)).toBeUndefined();
+  });
+
+  it('selects the first photographed landmark while preserving safe fallback-only datasets', () => {
+    expect(getFirstAvailableDiscardPhotoIndex([0, 13, 26], 'calibration')).toBe(1);
+    expect(getFirstAvailableDiscardPhotoIndex([0, 325, 338], 'calibration')).toBe(0);
+    expect(getFirstAvailableDiscardPhotoIndex([], 'calibration')).toBe(0);
   });
 
   it('supports future multiple variants at one card count', () => {

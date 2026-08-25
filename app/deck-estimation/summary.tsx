@@ -67,7 +67,7 @@ export default function DeckEstimationSummaryScreen() {
 
       <View style={[styles.recommendation, { backgroundColor: colors.surfaceMuted }]}>
         <Text style={[styles.recommendationLabel, { color: colors.primary }]}>NEXT STEP</Text>
-        <Text style={[styles.recommendationText, { color: colors.text }]}>Use Calibration to compare your weakest estimate with the half-deck landmark above and below it.</Text>
+        <Text style={[styles.recommendationText, { color: colors.text }]}>Use Calibration to compare your weakest estimate with the neighboring quarter-deck landmarks.</Text>
       </View>
 
       <View style={styles.actions}>

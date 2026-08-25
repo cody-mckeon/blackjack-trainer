@@ -75,3 +75,14 @@ export function getDiscardTrayPhoto(
   const photos = getDiscardTrayPhotos(discardedCardCount);
   return (preferredViewType ? photos.find((photo) => photo.viewType === preferredViewType) : undefined) ?? photos[0];
 }
+
+export function getFirstAvailableDiscardPhotoIndex(
+  discardedCardCounts: readonly number[],
+  preferredViewType?: DiscardTrayPhotoViewType,
+): number {
+  const firstPhotoIndex = discardedCardCounts.findIndex((discardedCardCount) =>
+    Boolean(getDiscardTrayPhoto(discardedCardCount, preferredViewType)),
+  );
+
+  return firstPhotoIndex >= 0 ? firstPhotoIndex : 0;
+}

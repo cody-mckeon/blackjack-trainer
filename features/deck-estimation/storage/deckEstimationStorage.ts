@@ -37,7 +37,10 @@ export function parseDeckEstimationSettings(value: string | null): DeckEstimatio
         ? (candidate.shoeSize as DeckEstimationSettings['shoeSize'])
         : DEFAULT_DECK_ESTIMATION_SETTINGS.shoeSize;
     const precision =
-      candidate.precision === 'whole' || candidate.precision === 'half' || candidate.precision === 'mixed'
+      candidate.precision === 'whole' ||
+      candidate.precision === 'half' ||
+      candidate.precision === 'quarter' ||
+      candidate.precision === 'mixed'
         ? candidate.precision
         : DEFAULT_DECK_ESTIMATION_SETTINGS.precision;
     const sessionLength =

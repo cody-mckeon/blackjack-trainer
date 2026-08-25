@@ -12,6 +12,24 @@ describe('deck estimation question generator', () => {
     expect(values.every((value) => value >= 1 && value <= startingDecks)).toBe(true);
   });
 
+  it.each([2, 4, 6, 8] as const)('creates quarter-deck landmarks for a %i-deck shoe', (startingDecks) => {
+    const values = getValidDeckEstimates(startingDecks, 'quarter');
+    expect(values.every((value) => value * 4 === Math.round(value * 4))).toBe(true);
+    expect(values.every((value) => value >= 1 && value <= startingDecks)).toBe(true);
+  });
+
+  it('maps a quarter-deck question to the exact registered card-count interval', () => {
+    const question = generateDeckEstimationQuestion(
+      { startingDecks: 6, precision: 'quarter' },
+      () => 0.1,
+      () => 50,
+    );
+
+    expect(question.precision).toBe('quarter');
+    expect(question.decksRemaining * 4).toBe(Math.round(question.decksRemaining * 4));
+    expect(question.discardedCardCount % 13).toBe(0);
+  });
+
   it('supports an allowed range without generating impossible values', () => {
     const question = generateDeckEstimationQuestion(
       { startingDecks: 6, precision: 'half', allowedRange: { minimum: 2.5, maximum: 4 } },

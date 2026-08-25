@@ -36,7 +36,7 @@ export function getValidDeckEstimates(
   precision: Exclude<DeckEstimationPrecision, 'mixed'>,
   allowedRange: DeckEstimateRange = {},
 ): number[] {
-  const increment = precision === 'whole' ? 1 : 0.5;
+  const increment = precision === 'whole' ? 1 : precision === 'half' ? 0.5 : 0.25;
   return generateCalibrationValues(
     startingDecks,
     increment,

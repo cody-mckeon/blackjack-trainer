@@ -11,15 +11,16 @@ describe('deck estimation persistence', () => {
     await AsyncStorage.clear();
   });
 
-  it('restores valid settings and rejects unsupported quarter precision', () => {
+  it('restores valid whole- and quarter-deck settings', () => {
     expect(parseDeckEstimationSettings(JSON.stringify({ shoeSize: 8, precision: 'whole', sessionLength: 50 }))).toEqual({
       shoeSize: 8,
       precision: 'whole',
       sessionLength: 50,
     });
-    expect(parseDeckEstimationSettings(JSON.stringify({ shoeSize: 9, precision: 'quarter' }))).toMatchObject({
+    expect(parseDeckEstimationSettings(JSON.stringify({ shoeSize: 6, precision: 'quarter', sessionLength: 25 }))).toEqual({
       shoeSize: 6,
-      precision: 'half',
+      precision: 'quarter',
+      sessionLength: 25,
     });
   });
 

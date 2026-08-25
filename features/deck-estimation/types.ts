@@ -4,8 +4,8 @@ export const DECK_ESTIMATION_SHOE_SIZES = [2, 4, 6, 8] as const;
 
 export type DeckEstimationShoeSize = (typeof DECK_ESTIMATION_SHOE_SIZES)[number];
 export type DeckEstimationShoeSelection = DeckEstimationShoeSize | 'mixed';
-export type DeckEstimationPrecision = 'whole' | 'half' | 'mixed';
-export type DeckEstimationMode = 'whole' | 'half' | 'mixed';
+export type DeckEstimationPrecision = 'whole' | 'half' | 'quarter' | 'mixed';
+export type DeckEstimationMode = 'whole' | 'half' | 'quarter' | 'mixed';
 export type DeckEstimationResponseSpeed = 'automatic' | 'fast' | 'calculating' | 'needs-practice';
 
 export interface DeckEstimationSettings {

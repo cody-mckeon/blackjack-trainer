@@ -15,6 +15,7 @@ import { DiscardTray } from './DiscardTray';
 export interface DiscardTrayPhotoProps {
   discardedCardCount: number;
   startingDeckCount: number;
+  maxPhotoWidth?: number;
   preferredViewType?: DiscardTrayPhotoViewType;
   fallbackVariation?: TrayVisualVariation;
   onVisualReady?: () => void;
@@ -37,6 +38,7 @@ export function resolveDiscardTrayVisualSource(
 export function DiscardTrayPhoto({
   discardedCardCount,
   startingDeckCount,
+  maxPhotoWidth,
   preferredViewType,
   fallbackVariation,
   onVisualReady,
@@ -75,7 +77,13 @@ export function DiscardTrayPhoto({
           testID={testID ? `${testID}-synthetic` : undefined}
         />
       ) : (
-        <View style={[styles.photoFrame, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.photoFrame,
+            { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+            maxPhotoWidth === undefined ? null : { maxWidth: maxPhotoWidth },
+          ]}
+        >
           <Image
             accessibilityLabel={`Real discard-tray photograph showing ${Math.round(discardedCardCount)} discarded cards`}
             onError={handlePhotoError}

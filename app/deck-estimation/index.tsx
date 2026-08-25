@@ -63,7 +63,9 @@ export default function DeckEstimationModesScreen() {
         />
         <TrainingModeCard
           title="Quarter Deck Practice"
-          description="Future precision landmarks such as 3.25, 3.5, and 3.75 decks."
+          description="Recognize precise quarter-deck landmarks from real tray photos."
+          enabled
+          onPress={() => router.push({ pathname: '/deck-estimation/setup', params: { mode: 'quarter' } })}
         />
       </View>
     </Screen>

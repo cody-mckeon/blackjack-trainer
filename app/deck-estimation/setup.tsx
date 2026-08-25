@@ -5,7 +5,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '@/components/AppButton';
 import { Screen } from '@/components/Screen';
 import { SegmentedSelector } from '@/components/SegmentedSelector';
-import { radii, spacing } from '@/constants/theme';
+import { spacing } from '@/constants/theme';
 import { useDeckEstimation } from '@/features/deck-estimation/context/DeckEstimationProvider';
 import type { DeckEstimationPrecision, DeckEstimationSettings, DeckEstimationShoeSelection } from '@/features/deck-estimation/types';
 import type { SessionLength } from '@/types/training';
@@ -15,14 +15,14 @@ const SHOE_OPTIONS: readonly { label: string; value: DeckEstimationShoeSelection
   { label: '2', value: 2 }, { label: '4', value: 4 }, { label: '6', value: 6 }, { label: '8', value: 8 }, { label: 'Mixed', value: 'mixed' },
 ];
 const PRECISION_OPTIONS: readonly { label: string; value: DeckEstimationPrecision }[] = [
-  { label: 'Whole', value: 'whole' }, { label: 'Half', value: 'half' }, { label: 'Mixed', value: 'mixed' },
+  { label: 'Whole', value: 'whole' }, { label: 'Half', value: 'half' }, { label: 'Quarter', value: 'quarter' }, { label: 'Mixed', value: 'mixed' },
 ];
 const SESSION_OPTIONS: readonly { label: string; value: SessionLength }[] = [
   { label: '10', value: 10 }, { label: '25', value: 25 }, { label: '50', value: 50 }, { label: 'Endless', value: 'endless' },
 ];
 
 function requestedPrecision(mode?: string): DeckEstimationPrecision | undefined {
-  return mode === 'whole' || mode === 'half' || mode === 'mixed' ? mode : undefined;
+  return mode === 'whole' || mode === 'half' || mode === 'quarter' || mode === 'mixed' ? mode : undefined;
 }
 
 export default function DeckEstimationSetupScreen() {
@@ -78,11 +78,6 @@ export default function DeckEstimationSetupScreen() {
         <SegmentedSelector accessibilityLabel="Session length" options={SESSION_OPTIONS} value={sessionLength} onChange={setSessionLength} />
       </View>
 
-      <View style={[styles.comingSoon, { backgroundColor: colors.surfaceMuted }]}>
-        <Text style={[styles.comingSoonTitle, { color: colors.text }]}>Quarter Deck Practice · Coming Soon</Text>
-        <Text style={[styles.comingSoonText, { color: colors.textMuted }]}>Future values can include 3.25, 3.5, and 3.75 decks.</Text>
-      </View>
-
       <AppButton label={isStarting ? 'Starting…' : 'Start training'} disabled={isStarting} onPress={() => void handleStart()} style={styles.start} />
     </Screen>
   );
@@ -94,8 +89,5 @@ const styles = StyleSheet.create({
   intro: { marginTop: spacing.sm, marginBottom: spacing.xl, fontSize: 16, lineHeight: 23 },
   field: { marginBottom: spacing.xl },
   label: { marginBottom: spacing.md, fontSize: 17, fontWeight: '800' },
-  comingSoon: { borderRadius: radii.md, padding: spacing.md },
-  comingSoonTitle: { fontSize: 15, fontWeight: '800' },
-  comingSoonText: { marginTop: spacing.xs, fontSize: 13, lineHeight: 19 },
   start: { marginTop: spacing.xl },
 });
