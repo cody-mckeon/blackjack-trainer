@@ -10,7 +10,6 @@ import { useAppTheme } from '@/lib/useAppTheme';
 import { formatPercentage, formatResponseTime } from '@/lib/formatters';
 
 const COMING_SOON_MODES = [
-  ['Deck Estimation Trainer', 'Estimate decks remaining from a visual discard tray.'],
   ['Combined Count Trainer', 'Combine running count, decks remaining, and true count.'],
   ['Casino Simulation', 'Combine decisions in realistic rounds.'],
   ['Deviations', 'Train index plays from the true count.'],
@@ -63,6 +62,12 @@ export default function HomeScreen() {
             description="Build fast, automatic Hi-Lo counting across complete shoes."
             enabled
             onPress={() => router.push('/running-count')}
+          />
+          <TrainingModeCard
+            title="Deck Estimation Trainer"
+            description="Estimate decks remaining from a visual discard tray."
+            enabled
+            onPress={() => router.push('/deck-estimation')}
           />
           {COMING_SOON_MODES.map(([title, description]) => (
             <TrainingModeCard key={title} title={title} description={description} />
